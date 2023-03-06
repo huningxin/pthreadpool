@@ -648,6 +648,10 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 * Copy of the flags passed to a parallelization function.
 	 */
 	pthreadpool_atomic_uint32_t flags;
+#if PTHREADPOOL_USE_CHROMIUM
+	// base::Lock
+	void* execution_mutex;
+#endif
 #if PTHREADPOOL_USE_CONDVAR || PTHREADPOOL_USE_FUTEX
 	/**
 	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
@@ -665,6 +669,28 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
 	 */
 	HANDLE execution_mutex;
+#endif
+#if PTHREADPOOL_USE_CHROMIUM
+	/**
+	 * Guards access to the @a active_threads variable.
+	 */
+	// base::Lock
+	void* completion_mutex;
+	/**
+	 * Condition variable to wait until all threads complete an operation (until @a active_threads is zero).
+	 */
+	// base::ConditionalVariable
+	void* completion_condvar;
+	/**
+	 * Guards access to the @a command variable.
+	 */
+	// base::Lock
+	void* command_mutex;
+	/**
+	 * Condition variable to wait for change of the @a command variable.
+	 */
+	// base::ConditionalVariable
+	void* command_condvar;
 #endif
 #if PTHREADPOOL_USE_CONDVAR
 	/**
@@ -711,6 +737,10 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 
 PTHREADPOOL_STATIC_ASSERT(sizeof(struct pthreadpool) % PTHREADPOOL_CACHELINE_SIZE == 0,
 	"pthreadpool structure must occupy an integer number of cache lines (64 bytes)");
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 PTHREADPOOL_INTERNAL struct pthreadpool* pthreadpool_allocate(
 	size_t threads_count);
@@ -813,3 +843,7 @@ PTHREADPOOL_INTERNAL void pthreadpool_thread_parallelize_6d_tile_1d_fastpath(
 PTHREADPOOL_INTERNAL void pthreadpool_thread_parallelize_6d_tile_2d_fastpath(
 	struct pthreadpool* threadpool,
 	struct thread_info* thread);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
