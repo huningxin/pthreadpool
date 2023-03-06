@@ -698,6 +698,32 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 */
 	HANDLE command_event[2];
 #endif
+#if PTHREADPOOL_USE_JOBS
+	/**
+	 * Controls execution of the posted Job. A pointer of Chromium's base::JobHandle.
+	 */
+	void* job_handle;
+	/**
+	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
+	 * A pointer of Chromium's base::Lock.
+	 */
+	void* execution_mutex;
+	/**
+	 * The index of work for each worker to do. After a worker takes a work, it is increased atomically.
+	 * A pointer of std::atomic_size_t.
+	 */
+	void* work_index;
+	/**
+	 * The number of incomplete work items. After a worker completes a work, it is decreased atomically.
+	 * A pointer of std::atomic_size_t
+	 */
+	void* num_incomplete_work_items;
+	/**
+	 * Event to wait on until all workers complete an operation (until num_incomplete_work_items is zero).
+	 * A pointer of Chromium's base::WaitableEvent.
+	 */
+	void* completion_event;
+#endif
 	/**
 	 * FXdiv divisor for the number of threads in the thread pool.
 	 * This struct never change after pthreadpool_create.
@@ -711,6 +737,10 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 
 PTHREADPOOL_STATIC_ASSERT(sizeof(struct pthreadpool) % PTHREADPOOL_CACHELINE_SIZE == 0,
 	"pthreadpool structure must occupy an integer number of cache lines (64 bytes)");
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 PTHREADPOOL_INTERNAL struct pthreadpool* pthreadpool_allocate(
 	size_t threads_count);
@@ -813,3 +843,7 @@ PTHREADPOOL_INTERNAL void pthreadpool_thread_parallelize_6d_tile_1d_fastpath(
 PTHREADPOOL_INTERNAL void pthreadpool_thread_parallelize_6d_tile_2d_fastpath(
 	struct pthreadpool* threadpool,
 	struct thread_info* thread);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
