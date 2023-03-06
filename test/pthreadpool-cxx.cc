@@ -7,6 +7,10 @@
 #include <cstddef>
 #include <memory>
 
+#if PTHREADPOOL_USE_JOBS
+#include "base/test/task_environment.h"
+#endif
+
 
 typedef std::unique_ptr<pthreadpool, decltype(&pthreadpool_destroy)> auto_pthreadpool_t;
 
@@ -92,6 +96,9 @@ const size_t kParallelize6DTile2DTileN = 2;
 
 
 TEST(Parallelize1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -102,6 +109,9 @@ TEST(Parallelize1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -114,6 +124,9 @@ TEST(Parallelize1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize1DRange);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -134,6 +147,9 @@ TEST(Parallelize1D, AllItemsProcessed) {
 
 
 TEST(Parallelize1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize1DRange);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -153,6 +169,9 @@ TEST(Parallelize1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize1DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -163,6 +182,9 @@ TEST(Parallelize1DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize1DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -176,6 +198,9 @@ TEST(Parallelize1DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize1DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -191,6 +216,9 @@ TEST(Parallelize1DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize1DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize1DTile1DRange);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -212,6 +240,9 @@ TEST(Parallelize1DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize1DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize1DTile1DRange);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -233,6 +264,9 @@ TEST(Parallelize1DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -243,6 +277,9 @@ TEST(Parallelize2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -256,6 +293,9 @@ TEST(Parallelize2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize2DRangeI * kParallelize2DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -279,6 +319,9 @@ TEST(Parallelize2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize2DRangeI * kParallelize2DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -303,6 +346,9 @@ TEST(Parallelize2D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize2DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -313,6 +359,9 @@ TEST(Parallelize2DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize2DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -327,6 +376,9 @@ TEST(Parallelize2DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize2DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -342,6 +394,9 @@ TEST(Parallelize2DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize2DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize2DTile1DRangeI * kParallelize2DTile1DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -367,6 +422,9 @@ TEST(Parallelize2DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize2DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize2DTile1DRangeI * kParallelize2DTile1DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -393,6 +451,9 @@ TEST(Parallelize2DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize2DTile2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -404,6 +465,9 @@ TEST(Parallelize2DTile2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize2DTile2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -420,6 +484,9 @@ TEST(Parallelize2DTile2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize2DTile2D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -441,6 +508,9 @@ TEST(Parallelize2DTile2D, UniformTiling) {
 }
 
 TEST(Parallelize2DTile2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize2DTile2DRangeI * kParallelize2DTile2DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -469,6 +539,9 @@ TEST(Parallelize2DTile2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize2DTile2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize2DTile2DRangeI * kParallelize2DTile2DRangeJ);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -498,6 +571,9 @@ TEST(Parallelize2DTile2D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize3D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -508,6 +584,9 @@ TEST(Parallelize3D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize3D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -522,6 +601,9 @@ TEST(Parallelize3D, AllItemsInBounds) {
 }
 
 TEST(Parallelize3D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize3DRangeI * kParallelize3DRangeJ * kParallelize3DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -547,6 +629,9 @@ TEST(Parallelize3D, AllItemsProcessed) {
 }
 
 TEST(Parallelize3D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize3DRangeI * kParallelize3DRangeJ * kParallelize3DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -573,6 +658,9 @@ TEST(Parallelize3D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize3DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -584,6 +672,9 @@ TEST(Parallelize3DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize3DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -600,6 +691,9 @@ TEST(Parallelize3DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize3DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -616,6 +710,9 @@ TEST(Parallelize3DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize3DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize3DTile1DRangeI * kParallelize3DTile1DRangeJ * kParallelize3DTile1DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -644,6 +741,9 @@ TEST(Parallelize3DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize3DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize3DTile1DRangeI * kParallelize3DTile1DRangeJ * kParallelize3DTile1DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -673,6 +773,9 @@ TEST(Parallelize3DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize3DTile2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -684,6 +787,9 @@ TEST(Parallelize3DTile2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize3DTile2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -701,6 +807,9 @@ TEST(Parallelize3DTile2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize3DTile2D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -722,6 +831,9 @@ TEST(Parallelize3DTile2D, UniformTiling) {
 }
 
 TEST(Parallelize3DTile2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize3DTile2DRangeI * kParallelize3DTile2DRangeJ * kParallelize3DTile2DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -752,6 +864,9 @@ TEST(Parallelize3DTile2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize3DTile2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize3DTile2DRangeI * kParallelize3DTile2DRangeJ * kParallelize3DTile2DRangeK);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -783,6 +898,9 @@ TEST(Parallelize3DTile2D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize4D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -793,6 +911,9 @@ TEST(Parallelize4D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize4D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -808,6 +929,9 @@ TEST(Parallelize4D, AllItemsInBounds) {
 }
 
 TEST(Parallelize4D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize4DRangeI * kParallelize4DRangeJ * kParallelize4DRangeK * kParallelize4DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -835,6 +959,9 @@ TEST(Parallelize4D, AllItemsProcessed) {
 }
 
 TEST(Parallelize4D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize4DRangeI * kParallelize4DRangeJ * kParallelize4DRangeK * kParallelize4DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -863,6 +990,9 @@ TEST(Parallelize4D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize4DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -874,6 +1004,9 @@ TEST(Parallelize4DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize4DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -891,6 +1024,9 @@ TEST(Parallelize4DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize4DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -907,6 +1043,9 @@ TEST(Parallelize4DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize4DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize4DTile1DRangeI * kParallelize4DTile1DRangeJ * kParallelize4DTile1DRangeK * kParallelize4DTile1DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -937,6 +1076,9 @@ TEST(Parallelize4DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize4DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize4DTile1DRangeI * kParallelize4DTile1DRangeJ * kParallelize4DTile1DRangeK * kParallelize4DTile1DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -968,6 +1110,9 @@ TEST(Parallelize4DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize4DTile2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -979,6 +1124,9 @@ TEST(Parallelize4DTile2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize4DTile2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -997,6 +1145,9 @@ TEST(Parallelize4DTile2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize4DTile2D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1018,6 +1169,9 @@ TEST(Parallelize4DTile2D, UniformTiling) {
 }
 
 TEST(Parallelize4DTile2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize4DTile2DRangeI * kParallelize4DTile2DRangeJ * kParallelize4DTile2DRangeK * kParallelize4DTile2DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1050,6 +1204,9 @@ TEST(Parallelize4DTile2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize4DTile2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize4DTile2DRangeI * kParallelize4DTile2DRangeJ * kParallelize4DTile2DRangeK * kParallelize4DTile2DRangeL);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1083,6 +1240,9 @@ TEST(Parallelize4DTile2D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize5D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1093,6 +1253,9 @@ TEST(Parallelize5D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize5D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1109,6 +1272,9 @@ TEST(Parallelize5D, AllItemsInBounds) {
 }
 
 TEST(Parallelize5D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize5DRangeI * kParallelize5DRangeJ * kParallelize5DRangeK * kParallelize5DRangeL * kParallelize5DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1138,6 +1304,9 @@ TEST(Parallelize5D, AllItemsProcessed) {
 }
 
 TEST(Parallelize5D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize5DRangeI * kParallelize5DRangeJ * kParallelize5DRangeK * kParallelize5DRangeL * kParallelize5DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1168,6 +1337,9 @@ TEST(Parallelize5D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize5DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1179,6 +1351,9 @@ TEST(Parallelize5DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize5DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1197,6 +1372,9 @@ TEST(Parallelize5DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize5DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1213,6 +1391,9 @@ TEST(Parallelize5DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize5DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize5DTile1DRangeI * kParallelize5DTile1DRangeJ * kParallelize5DTile1DRangeK * kParallelize5DTile1DRangeL * kParallelize5DTile1DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1245,6 +1426,9 @@ TEST(Parallelize5DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize5DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize5DTile1DRangeI * kParallelize5DTile1DRangeJ * kParallelize5DTile1DRangeK * kParallelize5DTile1DRangeL * kParallelize5DTile1DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1278,6 +1462,9 @@ TEST(Parallelize5DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize5DTile2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1289,6 +1476,9 @@ TEST(Parallelize5DTile2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize5DTile2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1308,6 +1498,9 @@ TEST(Parallelize5DTile2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize5DTile2D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1329,6 +1522,9 @@ TEST(Parallelize5DTile2D, UniformTiling) {
 }
 
 TEST(Parallelize5DTile2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize5DTile2DRangeI * kParallelize5DTile2DRangeJ * kParallelize5DTile2DRangeK * kParallelize5DTile2DRangeL * kParallelize5DTile2DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1363,6 +1559,9 @@ TEST(Parallelize5DTile2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize5DTile2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize5DTile2DRangeI * kParallelize5DTile2DRangeJ * kParallelize5DTile2DRangeK * kParallelize5DTile2DRangeL * kParallelize5DTile2DRangeM);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1398,6 +1597,9 @@ TEST(Parallelize5DTile2D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize6D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1407,6 +1609,9 @@ TEST(Parallelize6D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize6D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1424,6 +1629,9 @@ TEST(Parallelize6D, AllItemsInBounds) {
 }
 
 TEST(Parallelize6D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize6DRangeI * kParallelize6DRangeJ * kParallelize6DRangeK * kParallelize6DRangeL * kParallelize6DRangeM * kParallelize6DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1455,6 +1663,9 @@ TEST(Parallelize6D, AllItemsProcessed) {
 }
 
 TEST(Parallelize6D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize6DRangeI * kParallelize6DRangeJ * kParallelize6DRangeK * kParallelize6DRangeL * kParallelize6DRangeM * kParallelize6DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1487,6 +1698,9 @@ TEST(Parallelize6D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize6DTile1D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1497,6 +1711,9 @@ TEST(Parallelize6DTile1D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize6DTile1D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1516,6 +1733,9 @@ TEST(Parallelize6DTile1D, AllItemsInBounds) {
 }
 
 TEST(Parallelize6DTile1D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1532,6 +1752,9 @@ TEST(Parallelize6DTile1D, UniformTiling) {
 }
 
 TEST(Parallelize6DTile1D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize6DTile1DRangeI * kParallelize6DTile1DRangeJ * kParallelize6DTile1DRangeK * kParallelize6DTile1DRangeL * kParallelize6DTile1DRangeM * kParallelize6DTile1DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1566,6 +1789,9 @@ TEST(Parallelize6DTile1D, AllItemsProcessed) {
 }
 
 TEST(Parallelize6DTile1D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize6DTile1DRangeI * kParallelize6DTile1DRangeJ * kParallelize6DTile1DRangeK * kParallelize6DTile1DRangeL * kParallelize6DTile1DRangeM * kParallelize6DTile1DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1601,6 +1827,9 @@ TEST(Parallelize6DTile1D, EachItemProcessedOnce) {
 }
 
 TEST(Parallelize6DTile2D, ThreadPoolCompletes) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1611,6 +1840,9 @@ TEST(Parallelize6DTile2D, ThreadPoolCompletes) {
 }
 
 TEST(Parallelize6DTile2D, AllItemsInBounds) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1631,6 +1863,9 @@ TEST(Parallelize6DTile2D, AllItemsInBounds) {
 }
 
 TEST(Parallelize6DTile2D, UniformTiling) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
 	ASSERT_TRUE(threadpool.get());
 
@@ -1652,6 +1887,9 @@ TEST(Parallelize6DTile2D, UniformTiling) {
 }
 
 TEST(Parallelize6DTile2D, AllItemsProcessed) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_bool> indicators(kParallelize6DTile2DRangeI * kParallelize6DTile2DRangeJ * kParallelize6DTile2DRangeK * kParallelize6DTile2DRangeL * kParallelize6DTile2DRangeM * kParallelize6DTile2DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);
@@ -1688,6 +1926,9 @@ TEST(Parallelize6DTile2D, AllItemsProcessed) {
 }
 
 TEST(Parallelize6DTile2D, EachItemProcessedOnce) {
+#if PTHREADPOOL_USE_JOBS
+	base::test::TaskEnvironment task_environment;
+#endif
 	std::vector<std::atomic_int> counters(kParallelize6DTile2DRangeI * kParallelize6DTile2DRangeJ * kParallelize6DTile2DRangeK * kParallelize6DTile2DRangeL * kParallelize6DTile2DRangeM * kParallelize6DTile2DRangeN);
 
 	auto_pthreadpool_t threadpool(pthreadpool_create(1), pthreadpool_destroy);

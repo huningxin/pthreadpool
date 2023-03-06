@@ -4,6 +4,12 @@
 
 #include <thread>
 
+#if PTHREADPOOL_USE_JOBS
+#include "base/command_line.h"
+#include "base/test/task_environment.h"
+#include "base/test/test_timeouts.h"
+#endif
+
 static void SetNumberOfThreads(benchmark::internal::Benchmark* benchmark) {
 	const int max_threads = std::thread::hardware_concurrency();
 	for (int t = 1; t <= max_threads; t++) {
@@ -89,4 +95,21 @@ static void pthreadpool_parallelize_2d_tile_2d(benchmark::State& state) {
 BENCHMARK(pthreadpool_parallelize_2d_tile_2d)->UseRealTime()->Apply(SetNumberOfThreads);
 
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {
+    char arg0_default[] = "benchmark";
+    char* args_default = arg0_default;
+    if (!argv) {
+      argc = 1;
+      argv = &args_default;
+    }
+#if PTHREADPOOL_USE_JOBS
+	base::CommandLine::Init(argc, argv);
+	TestTimeouts::Initialize();
+	base::test::TaskEnvironment task_environment;
+#endif
+    ::benchmark::Initialize(&argc, argv);
+    if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+    ::benchmark::RunSpecifiedBenchmarks();
+    ::benchmark::Shutdown();
+    return 0;
+}

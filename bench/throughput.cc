@@ -2,6 +2,11 @@
 
 #include <pthreadpool.h>
 
+#if PTHREADPOOL_USE_JOBS
+#include "base/command_line.h"
+#include "base/test/task_environment.h"
+#include "base/test/test_timeouts.h"
+#endif
 
 static void compute_1d(void*, size_t) {
 }
@@ -404,4 +409,21 @@ static void pthreadpool_parallelize_6d_tile_2d(benchmark::State& state) {
 BENCHMARK(pthreadpool_parallelize_6d_tile_2d)->UseRealTime()->RangeMultiplier(10)->Range(10, 1000000);
 
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {
+    char arg0_default[] = "benchmark";
+    char* args_default = arg0_default;
+    if (!argv) {
+      argc = 1;
+      argv = &args_default;
+    }
+#if PTHREADPOOL_USE_JOBS
+	base::CommandLine::Init(argc, argv);
+	TestTimeouts::Initialize();
+	base::test::TaskEnvironment task_environment;
+#endif
+    ::benchmark::Initialize(&argc, argv);
+    if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+    ::benchmark::RunSpecifiedBenchmarks();
+    ::benchmark::Shutdown();
+    return 0;
+}
