@@ -649,6 +649,10 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 */
 	pthreadpool_atomic_uint32_t flags;
 #if PTHREADPOOL_USE_CHROMIUM
+	// base::JobHandle
+	void* job_handle;
+#endif
+#if PTHREADPOOL_USE_CHROMIUM
 	// base::Lock
 	void* execution_mutex;
 #endif

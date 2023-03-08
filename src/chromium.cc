@@ -9,9 +9,13 @@
 /* Configuration header */
 #include "threadpool-common.h"
 
-// TODO: Include chromium header
+// Chromium header
+#include "base/functional/bind.h"
+#include "base/system/sys_info.h"
 #include "base/synchronization/lock.h"
 #include "base/synchronization/condition_variable.h"
+#include "base/task/post_job.h"
+#include "base/task/task_traits.h"
 
 /* Public library header */
 #include <pthreadpool.h>
@@ -57,12 +61,14 @@ static void chromium_cond_destroy(void* lock) {
 	delete static_cast<base::Lock*>(lock);
 }
 
-static void checkin_worker_thread(struct pthreadpool* threadpool) {
+static size_t checkin_worker_thread(struct pthreadpool* threadpool) {
+	size_t thread_index;
 	chromium_mutex_lock(threadpool->completion_mutex);
-	if (pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads) == 0) {
+	if ((thread_index = pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads)) == 0) {
 		chromium_cond_signal(threadpool->completion_condvar);
 	}
 	chromium_mutex_unlock(threadpool->completion_mutex);
+	return thread_index;
 }
 
 static void wait_worker_threads(struct pthreadpool* threadpool) {
@@ -127,15 +133,16 @@ static uint32_t wait_for_new_command(
 	return command;
 }
 
-static void* thread_main(void* arg) {
-	struct thread_info* thread = (struct thread_info*) arg;
-	struct pthreadpool* threadpool = thread->threadpool;
+static void thread_main(void* arg, base::JobDelegate* job_delegate) {
+	struct pthreadpool* threadpool = (struct pthreadpool*) arg;
 	uint32_t last_command = threadpool_command_init;
 	struct fpu_state saved_fpu_state = { 0 };
 	uint32_t flags = 0;
 
 	/* Check in */
-	checkin_worker_thread(threadpool);
+	size_t thread_index = checkin_worker_thread(threadpool);
+	/* caller thread is thread 0*/
+	struct thread_info* thread = &threadpool->threads[thread_index + 1];
 
 	/* Monitor new commands and act accordingly */
 	for (;;) {
@@ -163,7 +170,7 @@ static void* thread_main(void* arg) {
 			}
 			case threadpool_command_shutdown:
 				/* Exit immediately: the master thread is waiting on pthread_join */
-				return NULL;
+				return;
 			case threadpool_command_init:
 				/* To inhibit compiler warning */
 				break;
@@ -175,10 +182,14 @@ static void* thread_main(void* arg) {
 	};
 }
 
+size_t max_concurrent_threads(void* arg, size_t /*worker_count*/) {
+	struct pthreadpool* threadpool = (struct pthreadpool*) arg;
+	return threadpool->threads_count.value - 1 /* caller thread */;
+}
+
 struct pthreadpool* pthreadpool_create(size_t threads_count) {
 	if (threads_count == 0) {
-		// TODO: use base::SysInfo
-		threads_count = 1;
+		threads_count = base::SysInfo::NumberOfProcessors();
 	}
 
 	struct pthreadpool* threadpool = pthreadpool_allocate(threads_count);
@@ -202,11 +213,12 @@ struct pthreadpool* pthreadpool_create(size_t threads_count) {
 		pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count - 1 /* caller thread */);
 
 		/* Caller thread serves as worker #0. Thus, we create system threads starting with worker #1. */
-		// TODO: Call base::PostJob
-		// for (size_t tid = 1; tid < threads_count; tid++) {
-		// 	pthread_create(&threadpool->threads[tid].thread_object, NULL, &thread_main, &threadpool->threads[tid]);
-		// }
-		thread_main(nullptr);
+		threadpool->job_handle = static_cast<void*>(new base::JobHandle(
+			base::PostJob(
+				FROM_HERE,
+				{base::TaskPriority::BEST_EFFORT, base::WithBaseSyncPrimitives(), base::ThreadPolicy::PREFER_BACKGROUND},
+				base::BindRepeating(&thread_main, base::Unretained(threadpool)),
+				base::BindRepeating(&max_concurrent_threads, base::Unretained(threadpool)))));
 
 		/* Wait until all threads initialize */
 		wait_worker_threads(threadpool);
@@ -285,14 +297,10 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 	pthreadpool_store_release_uint32_t(&threadpool->command, new_command);
 
 	/* Unlock the command variables before waking up the threads for better performance */
-	// TODO: Call base::Lock
 	chromium_mutex_unlock(threadpool->command_mutex);
-	// pthread_mutex_unlock(&threadpool->command_mutex);
 
 	/* Wake up the threads */
-	// TODO: Call base::ConditionVariable
 	chromium_cond_broadcast(threadpool->command_condvar);
-	// pthread_cond_broadcast(&threadpool->command_condvar);
 
 	/* Save and modify FPU denormals control, if needed */
 	struct fpu_state saved_fpu_state = { 0 };
@@ -344,10 +352,8 @@ void pthreadpool_destroy(struct pthreadpool* threadpool) {
 			chromium_mutex_unlock(threadpool->command_mutex);
 
 			/* Wait until all threads return */
-			// Call JobHandle::Join()
-			// for (size_t thread = 1; thread < threads_count; thread++) {
-			// 	pthread_join(threadpool->threads[thread].thread_object, NULL);
-			// }
+			static_cast<base::JobHandle*>(threadpool->job_handle)->Join();
+			delete static_cast<base::JobHandle*>(threadpool->job_handle);
 
 			/* Release resources */
 			chromium_mutex_destroy(threadpool->execution_mutex);
