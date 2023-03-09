@@ -651,8 +651,21 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 #if PTHREADPOOL_USE_POSTJOB
 	// base::JobHandle
 	void* job_handle;
+	/**
+	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
+	 */
 	// base::Lock
 	void* execution_mutex;
+	/**
+	 * Guards access to the @a active_threads variable.
+	 */
+	// base::Lock
+	void* completion_mutex;
+	/**
+	 * Condition variable to wait until all threads complete an operation (until @a active_threads is zero).
+	 */
+	// base::ConditionVariable
+	void* completion_condvar;
 #endif
 #if PTHREADPOOL_USE_CONDVAR || PTHREADPOOL_USE_FUTEX
 	/**
