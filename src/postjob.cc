@@ -13,7 +13,6 @@
 #include "base/functional/bind.h"
 #include "base/system/sys_info.h"
 #include "base/synchronization/lock.h"
-#include "base/synchronization/condition_variable.h"
 #include "base/task/post_job.h"
 #include "base/task/task_traits.h"
 
@@ -41,98 +40,6 @@ static void chromium_mutex_destroy(void* lock) {
 	delete static_cast<base::Lock*>(lock);
 }
 
-// static void* chromium_cond_create(void* lock) {
-// 	return new base::ConditionVariable(static_cast<base::Lock*>(lock));
-// }
-
-// static void chromium_cond_signal(void* cond) {
-// 	static_cast<base::ConditionVariable*>(cond)->Signal();
-// }
-
-// static void chromium_cond_broadcast(void* cond) {
-// 	static_cast<base::ConditionVariable*>(cond)->Broadcast();
-// }
-
-// static void chromium_cond_wait(void* cond) {
-// 	static_cast<base::ConditionVariable*>(cond)->Wait();
-// }
-
-// static void chromium_cond_destroy(void* lock) {
-// 	delete static_cast<base::Lock*>(lock);
-// }
-
-// static size_t checkin_worker_thread(struct pthreadpool* threadpool) {
-// 	size_t thread_index;
-// 	chromium_mutex_lock(threadpool->completion_mutex);
-// 	if ((thread_index = pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads)) == 0) {
-// 		chromium_cond_signal(threadpool->completion_condvar);
-// 	}
-// 	chromium_mutex_unlock(threadpool->completion_mutex);
-// 	return thread_index;
-// }
-
-// static void wait_worker_threads(struct pthreadpool* threadpool) {
-// 	/* Initial check */
-// 	size_t active_threads = pthreadpool_load_acquire_size_t(&threadpool->active_threads);
-// 	if (active_threads == 0) {
-// 		return;
-// 	}
-
-// 	/* Spin-wait */
-// 	for (uint32_t i = PTHREADPOOL_SPIN_WAIT_ITERATIONS; i != 0; i--) {
-// 		// TODO: Call base::JobDelegate::ShouldYield()
-// 		pthreadpool_yield();
-
-// 		active_threads = pthreadpool_load_acquire_size_t(&threadpool->active_threads);
-// 		if (active_threads == 0) {
-// 			return;
-// 		}
-// 	}
-
-// 	/* Fall-back to mutex/futex wait */
-// 	chromium_mutex_lock(threadpool->completion_mutex);
-// 	while (pthreadpool_load_acquire_size_t(&threadpool->active_threads) != 0) {
-// 		chromium_cond_wait(threadpool->completion_condvar);
-// 	};
-// 	chromium_mutex_unlock(threadpool->completion_mutex);
-// }
-
-// static uint32_t wait_for_new_command(
-// 	struct pthreadpool* threadpool,
-// 	uint32_t last_command,
-// 	uint32_t last_flags)
-// {
-// 	uint32_t command = pthreadpool_load_acquire_uint32_t(&threadpool->command);
-// 	if (command != last_command) {
-// 		return command;
-// 	}
-
-// 	if ((last_flags & PTHREADPOOL_FLAG_YIELD_WORKERS) == 0) {
-// 		/* Spin-wait loop */
-// 		for (uint32_t i = PTHREADPOOL_SPIN_WAIT_ITERATIONS; i != 0; i--) {
-// 			// TODO: Call base::JobDelegate::ShouldYield()
-// 			pthreadpool_yield();
-
-// 			command = pthreadpool_load_acquire_uint32_t(&threadpool->command);
-// 			if (command != last_command) {
-// 				return command;
-// 			}
-// 		}
-// 	}
-
-// 	/* Spin-wait disabled or timed out, fall back to mutex/futex wait */
-// 	/* Lock the command mutex */
-// 	chromium_mutex_lock(threadpool->command_mutex);
-// 	/* Read the command */
-// 	while ((command = pthreadpool_load_acquire_uint32_t(&threadpool->command)) == last_command) {
-// 		/* Wait for new command */
-// 		chromium_cond_wait(threadpool->command_condvar);
-// 	}
-// 	/* Read a new command */
-// 	chromium_mutex_unlock(threadpool->command_mutex);
-// 	return command;
-// }
-
 static void thread_main(void* arg, base::JobDelegate* job_delegate) {
 	struct pthreadpool* threadpool = (struct pthreadpool*) arg;
 	uint32_t last_command = threadpool_command_init;
@@ -144,7 +51,7 @@ static void thread_main(void* arg, base::JobDelegate* job_delegate) {
 	}
 	size_t thread_index = pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads);
 	
-	/* caller thread is thread 0*/
+	/* caller thread is thread 0, worker thread starts from thread 1 */
 	struct thread_info* thread = &threadpool->threads[thread_index + 1];
 
 	const thread_function_t thread_function =
@@ -168,7 +75,6 @@ size_t max_concurrent_threads(void* arg, size_t /*worker_count*/) {
 struct pthreadpool* pthreadpool_create(size_t threads_count) {
 	if (threads_count == 0) {
 		threads_count = base::SysInfo::NumberOfProcessors();
-
 		if (threads_count == 0) {
 			return NULL;
 		}

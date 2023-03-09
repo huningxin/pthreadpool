@@ -4,8 +4,6 @@
 	#define PTHREADPOOL_USE_CPUINFO 0
 #endif
 
-#ifndef PTHREADPOOL_USE_CHROMIUM
-
 #ifndef PTHREADPOOL_USE_FUTEX
 	#if defined(__linux__)
 		#define PTHREADPOOL_USE_FUTEX 1
@@ -38,8 +36,6 @@
 	#else
 		#define PTHREADPOOL_USE_CONDVAR 1
 	#endif
-#endif
-
 #endif
 
 

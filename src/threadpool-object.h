@@ -648,11 +648,9 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 * Copy of the flags passed to a parallelization function.
 	 */
 	pthreadpool_atomic_uint32_t flags;
-#if PTHREADPOOL_USE_CHROMIUM
+#if PTHREADPOOL_USE_POSTJOB
 	// base::JobHandle
 	void* job_handle;
-#endif
-#if PTHREADPOOL_USE_CHROMIUM
 	// base::Lock
 	void* execution_mutex;
 #endif
@@ -673,28 +671,6 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
 	 */
 	HANDLE execution_mutex;
-#endif
-#if PTHREADPOOL_USE_CHROMIUM
-	/**
-	 * Guards access to the @a active_threads variable.
-	 */
-	// base::Lock
-	void* completion_mutex;
-	/**
-	 * Condition variable to wait until all threads complete an operation (until @a active_threads is zero).
-	 */
-	// base::ConditionalVariable
-	void* completion_condvar;
-	/**
-	 * Guards access to the @a command variable.
-	 */
-	// base::Lock
-	void* command_mutex;
-	/**
-	 * Condition variable to wait for change of the @a command variable.
-	 */
-	// base::ConditionalVariable
-	void* command_condvar;
 #endif
 #if PTHREADPOOL_USE_CONDVAR
 	/**
