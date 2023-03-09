@@ -242,7 +242,7 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 	/* Caller thread serves as worker #0. Thus, we create system threads starting with worker #1. */
 	auto job_handle = base::PostJob(
 		FROM_HERE,
-		{base::TaskPriority::USER_VISIBLE, base::WithBaseSyncPrimitives()},
+		{base::WithBaseSyncPrimitives()},
 		base::BindRepeating(&thread_main, threadpool),
 		base::BindRepeating(&max_concurrent_threads, threadpool));
 
