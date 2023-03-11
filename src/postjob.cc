@@ -41,55 +41,63 @@ static void base_mutex_destroy(void* lock) {
 	delete static_cast<base::Lock*>(lock);
 }
 
-static void* base_cond_create(void* lock) {
-       return new base::ConditionVariable(static_cast<base::Lock*>(lock));
+static void* atomic_size_t_create() {
+	return new std::atomic_size_t;
 }
 
-static void base_cond_signal(void* cond) {
-       static_cast<base::ConditionVariable*>(cond)->Signal();
+static size_t atomic_size_t_load (void* address) {
+	return static_cast<std::atomic_size_t*>(address)->load();
 }
 
-static void base_cond_wait(void* cond) {
-       static_cast<base::ConditionVariable*>(cond)->Wait();
+static void atomic_size_t_store(void* address, size_t value) {
+	return static_cast<std::atomic_size_t*>(address)->store(value);
 }
 
-static void base_cond_destroy(void* lock) {
-       delete static_cast<base::Lock*>(lock);
+static size_t atomic_size_t_increment_fetch_relaxed(void* address) {
+	return static_cast<std::atomic_size_t*>(address)->fetch_add(1, std::memory_order_relaxed);
 }
 
+static void atomic_size_t_destroy(void* address) {
+	delete static_cast<std::atomic_size_t*>(address);
+}
+
+static void do_job(struct pthreadpool* threadpool, size_t thread_index) {
+	struct thread_info* thread = &threadpool->threads[thread_index];
+	const uint32_t flags = pthreadpool_load_relaxed_uint32_t(&threadpool->flags);
+	const thread_function_t thread_function =
+		(thread_function_t) pthreadpool_load_relaxed_void_p(&threadpool->thread_function);
+
+	struct fpu_state saved_fpu_state = { 0 };
+	if (flags & PTHREADPOOL_FLAG_DISABLE_DENORMALS) {
+		saved_fpu_state = get_fpu_state();
+		disable_fpu_denormals();
+	}
+
+	thread_function(threadpool, thread);
+
+	if (flags & PTHREADPOOL_FLAG_DISABLE_DENORMALS) {
+		set_fpu_state(saved_fpu_state);
+	}
+}
 
 static void thread_main(struct pthreadpool* threadpool, base::JobDelegate* job_delegate) {
 	while (!job_delegate->ShouldYield()) {
-		base_mutex_lock(threadpool->completion_mutex);
-		if (pthreadpool_load_acquire_size_t(&threadpool->active_threads) == 0 ) {
-			base_cond_signal(threadpool->completion_condvar);
-			base_mutex_unlock(threadpool->completion_mutex);
+		const size_t thread_index = atomic_size_t_increment_fetch_relaxed(threadpool->thread_index);
+		// Worker thread index should be in the range [1, threads_count - 1].
+		if (thread_index > threadpool->threads_count.value - 1) {
 			return;
 		}
-		size_t thread_index = pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads);
-		base_mutex_unlock(threadpool->completion_mutex);
-		struct thread_info* thread = &threadpool->threads[thread_index];
-
-		const uint32_t flags = pthreadpool_load_relaxed_uint32_t(&threadpool->flags);
-		const thread_function_t thread_function =
-			(thread_function_t) pthreadpool_load_relaxed_void_p(&threadpool->thread_function);
-
-		struct fpu_state saved_fpu_state = { 0 };
-		if (flags & PTHREADPOOL_FLAG_DISABLE_DENORMALS) {
-			saved_fpu_state = get_fpu_state();
-			disable_fpu_denormals();
-		}
-
-		thread_function(threadpool, thread);
-
-		if (flags & PTHREADPOOL_FLAG_DISABLE_DENORMALS) {
-			set_fpu_state(saved_fpu_state);
-		}
+		do_job(threadpool, thread_index);
 	}
 }
 
 size_t max_concurrent_threads(struct pthreadpool* threadpool, size_t /*worker_count*/) {
-	return pthreadpool_load_acquire_size_t(&threadpool->active_threads);
+	const size_t thread_index = atomic_size_t_load(threadpool->thread_index);
+	if (thread_index >= threadpool->threads_count.value - 1) {
+		return 0;
+	} else {
+		return threadpool->threads_count.value - 1 - thread_index;
+	}
 }
 
 struct pthreadpool* pthreadpool_create(size_t threads_count) {
@@ -110,13 +118,9 @@ struct pthreadpool* pthreadpool_create(size_t threads_count) {
 		threadpool->threads[tid].threadpool = threadpool;
 	}
 
-	/* Thread pool with a single thread computes everything on the caller thread. */
-	if (threads_count > 1) {
-		threadpool->execution_mutex = base_mutex_create();
-		threadpool->completion_mutex = base_mutex_create();
-		threadpool->completion_condvar = base_cond_create(threadpool->completion_mutex);
-		pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count);
-	}
+	threadpool->execution_mutex = base_mutex_create();
+	threadpool->thread_index = atomic_size_t_create();
+
 	return threadpool;
 }
 
@@ -146,7 +150,8 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 
 	/* Locking of completion_mutex not needed: readers are sleeping on command_condvar */
 	const struct fxdiv_divisor_size_t threads_count = threadpool->threads_count;
-	pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count.value);
+	/* Caller thread serves as worker #0. Thus, we create system threads starting with worker #1. */
+	atomic_size_t_store(threadpool->thread_index, 1);
 
 	if (params_size != 0) {
 		memcpy(&threadpool->params, params, params_size);
@@ -167,19 +172,19 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 		range_start = range_end;
 	}
 
-	auto job_handle = base::PostJob(
-		FROM_HERE,
-		{base::WithBaseSyncPrimitives()},
-		base::BindRepeating(&thread_main, threadpool),
-		base::BindRepeating(&max_concurrent_threads, threadpool));
+	if (threads_count.value == 1) {
+		do_job(threadpool, 0);
+	} else {
+		auto job_handle = base::PostJob(
+			FROM_HERE,
+			{base::WithBaseSyncPrimitives()},
+			base::BindRepeating(&thread_main, threadpool),
+			base::BindRepeating(&max_concurrent_threads, threadpool));
 
-	base_mutex_lock(threadpool->completion_mutex);
-	while (pthreadpool_load_acquire_size_t(&threadpool->active_threads) != 0) {
-		base_cond_wait(threadpool->completion_condvar);
-	};
-	base_mutex_unlock(threadpool->completion_mutex);
+		do_job(threadpool, 0);
 
-	job_handle.Join();
+		job_handle.Join();
+	}
 
 	/* Unprotect the global threadpool structures */
 	base_mutex_unlock(threadpool->execution_mutex);
@@ -187,13 +192,9 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 
 void pthreadpool_destroy(struct pthreadpool* threadpool) {
 	if (threadpool != NULL) {
-		const size_t threads_count = threadpool->threads_count.value;
-		if (threads_count > 1) {
-			/* Release resources */
-			base_mutex_destroy(threadpool->execution_mutex);
-			base_mutex_destroy(threadpool->completion_mutex);
-            base_cond_destroy(threadpool->completion_condvar);
-		}
+		/* Release resources */
+		base_mutex_destroy(threadpool->execution_mutex);
+		atomic_size_t_destroy(threadpool->thread_index);
 		pthreadpool_deallocate(threadpool);
 	}
 }
