@@ -658,6 +658,18 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	void* execution_mutex;
 	// base::atomic_size_t
 	void* thread_index;
+	/**
+	 * Events to wait on until all threads complete an operation (until @a active_threads is zero).
+	 * To avoid race conditions due to spin-lock synchronization, we use two events and switch event in use after every
+	 * submitted command according to the high bit of the command word.
+	 */
+	void* completion_event[2];
+	/**
+	 * Events to wait on for change of the @a command variable.
+	 * To avoid race conditions due to spin-lock synchronization, we use two events and switch event in use after every
+	 * submitted command according to the high bit of the command word.
+	 */
+	void* command_event[2];
 #endif
 #if PTHREADPOOL_USE_CONDVAR || PTHREADPOOL_USE_FUTEX
 	/**

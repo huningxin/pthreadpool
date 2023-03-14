@@ -12,8 +12,8 @@
 // Chromium header
 #include "base/functional/bind.h"
 #include "base/system/sys_info.h"
-#include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
+#include "base/synchronization/waitable_event.h"
 #include "base/task/post_job.h"
 #include "base/task/task_traits.h"
 
@@ -45,10 +45,6 @@ static void* atomic_size_t_create() {
 	return new std::atomic_size_t;
 }
 
-static size_t atomic_size_t_load (void* address) {
-	return static_cast<std::atomic_size_t*>(address)->load();
-}
-
 static void atomic_size_t_store(void* address, size_t value) {
 	return static_cast<std::atomic_size_t*>(address)->store(value);
 }
@@ -59,6 +55,77 @@ static size_t atomic_size_t_increment_fetch_relaxed(void* address) {
 
 static void atomic_size_t_destroy(void* address) {
 	delete static_cast<std::atomic_size_t*>(address);
+}
+
+void WaitEvent(void* event) {
+	static_cast<base::WaitableEvent*>(event)->Wait();
+}
+
+void ResetEvent(void* event) {
+	static_cast<base::WaitableEvent*>(event)->Reset();
+}
+
+void SetEvent(void* event) {
+	static_cast<base::WaitableEvent*>(event)->Signal();
+}
+
+static void checkin_worker_thread(struct pthreadpool* threadpool, uint32_t event_index) {
+	if (pthreadpool_decrement_fetch_acquire_release_size_t(&threadpool->active_threads) == 0) {
+		SetEvent(threadpool->completion_event[event_index]);
+	}
+}
+
+static void wait_worker_threads(struct pthreadpool* threadpool, uint32_t event_index) {
+	/* Initial check */
+	size_t active_threads = pthreadpool_load_acquire_size_t(&threadpool->active_threads);
+	if (active_threads == 0) {
+		return;
+	}
+
+	/* Spin-wait */
+	for (uint32_t i = PTHREADPOOL_SPIN_WAIT_ITERATIONS; i != 0; i--) {
+		pthreadpool_yield();
+
+		active_threads = pthreadpool_load_acquire_size_t(&threadpool->active_threads);
+		if (active_threads == 0) {
+			return;
+		}
+	}
+
+	/* Fall-back to event wait */
+	WaitEvent(threadpool->completion_event[event_index]);
+	assert(pthreadpool_load_relaxed_size_t(&threadpool->active_threads) == 0);
+}
+
+static uint32_t wait_for_new_command(
+	struct pthreadpool* threadpool,
+	uint32_t last_command,
+	uint32_t last_flags)
+{
+	uint32_t command = pthreadpool_load_acquire_uint32_t(&threadpool->command);
+	if (command != last_command) {
+		return command;
+	}
+
+	if ((last_flags & PTHREADPOOL_FLAG_YIELD_WORKERS) == 0) {
+		/* Spin-wait loop */
+		for (uint32_t i = PTHREADPOOL_SPIN_WAIT_ITERATIONS; i != 0; i--) {
+			pthreadpool_yield();
+
+			command = pthreadpool_load_acquire_uint32_t(&threadpool->command);
+			if (command != last_command) {
+				return command;
+			}
+		}
+	}
+
+	/* Spin-wait disabled or timed out, fall back to event wait */
+	const uint32_t event_index = (last_command >> 31);
+	WaitEvent(threadpool->command_event[event_index]);
+
+	command = pthreadpool_load_relaxed_uint32_t(&threadpool->command);
+	assert(command != last_command);
+	return command;
 }
 
 static void do_job(struct pthreadpool* threadpool, size_t thread_index) {
@@ -81,23 +148,50 @@ static void do_job(struct pthreadpool* threadpool, size_t thread_index) {
 }
 
 static void thread_main(struct pthreadpool* threadpool, base::JobDelegate* job_delegate) {
-	while (!job_delegate->ShouldYield()) {
-		const size_t thread_index = atomic_size_t_increment_fetch_relaxed(threadpool->thread_index);
-		// Worker thread index should be in the range [1, threads_count - 1].
-		if (thread_index > threadpool->threads_count.value - 1) {
-			return;
-		}
-		do_job(threadpool, thread_index);
+	// Worker thread index should be in the range [1, threads_count - 1].
+	const size_t thread_index = atomic_size_t_increment_fetch_relaxed(threadpool->thread_index);
+	if (thread_index < 1 || thread_index > threadpool->threads_count.value - 1) {
+		return;
 	}
+
+	uint32_t last_command = threadpool_command_init;
+	struct fpu_state saved_fpu_state = { 0 };
+	uint32_t flags = 0;
+
+	/* Check in */
+	checkin_worker_thread(threadpool, 0);
+
+	/* Monitor new commands and act accordingly */
+	while (!job_delegate->ShouldYield()) {
+		uint32_t command = wait_for_new_command(threadpool, last_command, flags);
+		pthreadpool_fence_acquire();
+
+		flags = pthreadpool_load_relaxed_uint32_t(&threadpool->flags);
+
+		/* Process command */
+		switch (command & THREADPOOL_COMMAND_MASK) {
+			case threadpool_command_parallelize:
+			{
+				do_job(threadpool, thread_index);
+				break;
+			}
+			case threadpool_command_shutdown:
+				/* Exit immediately: the master thread is waiting on pthread_join */
+				return;
+			case threadpool_command_init:
+				/* To inhibit compiler warning */
+				break;
+		}
+		/* Notify the master thread that we finished processing */
+		const uint32_t event_index = command >> 31;
+		checkin_worker_thread(threadpool, event_index);
+		/* Update last command */
+		last_command = command;
+	};
 }
 
-size_t max_concurrent_threads(struct pthreadpool* threadpool, size_t /*worker_count*/) {
-	const size_t thread_index = atomic_size_t_load(threadpool->thread_index);
-	if (thread_index >= threadpool->threads_count.value - 1) {
-		return 0;
-	} else {
-		return threadpool->threads_count.value - 1 - thread_index;
-	}
+size_t max_concurrent_threads(struct pthreadpool* threadpool, size_t /* worker_count */) {
+	return threadpool->threads_count.value - 1;
 }
 
 struct pthreadpool* pthreadpool_create(size_t threads_count) {
@@ -118,8 +212,24 @@ struct pthreadpool* pthreadpool_create(size_t threads_count) {
 		threadpool->threads[tid].threadpool = threadpool;
 	}
 
-	threadpool->execution_mutex = base_mutex_create();
-	threadpool->thread_index = atomic_size_t_create();
+	/* Thread pool with a single thread computes everything on the caller thread. */
+	if (threads_count > 1) {
+		threadpool->execution_mutex = base_mutex_create();
+		for (size_t i = 0; i < 2; i++) {
+			threadpool->completion_event[i] = new base::WaitableEvent();
+			threadpool->command_event[i] = new base::WaitableEvent();
+		}
+		threadpool->thread_index = atomic_size_t_create();
+		atomic_size_t_store(threadpool->thread_index, 1); /* Worker thread index starts from #1 */
+		pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count - 1 /* caller thread */);
+		threadpool->job_handle = new base::JobHandle(base::PostJob(
+				FROM_HERE, {base::WithBaseSyncPrimitives()},
+				base::BindRepeating(&thread_main, threadpool),
+				base::BindRepeating(&max_concurrent_threads, threadpool)));
+
+		/* Wait until all threads initialize */
+		wait_worker_threads(threadpool, 0);
+	}
 
 	return threadpool;
 }
@@ -148,13 +258,12 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 	pthreadpool_store_relaxed_void_p(&threadpool->argument, context);
 	pthreadpool_store_relaxed_uint32_t(&threadpool->flags, flags);
 
-	/* Locking of completion_mutex not needed: readers are sleeping on command_condvar */
 	const struct fxdiv_divisor_size_t threads_count = threadpool->threads_count;
-	/* Caller thread serves as worker #0. Thus, we create system threads starting with worker #1. */
-	atomic_size_t_store(threadpool->thread_index, 1);
+	pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count.value - 1 /* caller thread */);
 
 	if (params_size != 0) {
 		memcpy(&threadpool->params, params, params_size);
+		pthreadpool_fence_release();
 	}
 
 	/* Spread the work between threads */
@@ -172,19 +281,59 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 		range_start = range_end;
 	}
 
-	if (threads_count.value == 1) {
-		do_job(threadpool, 0);
-	} else {
-		auto job_handle = base::PostJob(
-			FROM_HERE,
-			{base::WithBaseSyncPrimitives()},
-			base::BindRepeating(&thread_main, threadpool),
-			base::BindRepeating(&max_concurrent_threads, threadpool));
+	/*
+	 * Update the threadpool command.
+	 * Imporantly, do it after initializing command parameters (range, task, argument, flags)
+	 * ~(threadpool->command | THREADPOOL_COMMAND_MASK) flips the bits not in command mask
+	 * to ensure the unmasked command is different then the last command, because worker threads
+	 * monitor for change in the unmasked command.
+	 */
+	const uint32_t old_command = pthreadpool_load_relaxed_uint32_t(&threadpool->command);
+	const uint32_t new_command = ~(old_command | THREADPOOL_COMMAND_MASK) | threadpool_command_parallelize;
 
-		do_job(threadpool, 0);
+	/*
+	 * Reset the command event for the next command.
+	 * It is important to reset the event before writing out the new command, because as soon as the worker threads
+	 * observe the new command, they may process it and switch to waiting on the next command event.
+	 *
+	 * Note: the event is different from the command event signalled in this update.
+	 */
+	const uint32_t event_index = (old_command >> 31);
+	ResetEvent(threadpool->command_event[event_index ^ 1]);
 
-		job_handle.Join();
-	}
+	/*
+	 * Store the command with release semantics to guarantee that if a worker thread observes
+	 * the new command value, it also observes the updated command parameters.
+	 *
+	 * Note: release semantics is necessary, because the workers might be waiting in a spin-loop
+	 * rather than on the event object.
+	 */
+	pthreadpool_store_release_uint32_t(&threadpool->command, new_command);
+
+	/*
+	 * Signal the event to wake up the threads.
+	 * Event in use must be switched after every submitted command to avoid race conditions.
+	 * Choose the event based on the high bit of the command, which is flipped on every update.
+	 */
+	SetEvent(threadpool->command_event[event_index]);
+
+	/* Do computations as worker #0 */
+	do_job(threadpool, 0);
+	
+	/*
+	 * Wait until the threads finish computation
+	 * Use the complementary event because it corresponds to the new command.
+	 */
+	wait_worker_threads(threadpool, event_index ^ 1);
+
+	/*
+	 * Reset the completion event for the next command.
+	 * Note: the event is different from the one used for waiting in this update.
+	 */
+	ResetEvent(threadpool->completion_event[event_index]);
+
+	/* Make changes by other threads visible to this thread */
+	pthreadpool_fence_acquire();
 
 	/* Unprotect the global threadpool structures */
 	base_mutex_unlock(threadpool->execution_mutex);
@@ -192,9 +341,40 @@ PTHREADPOOL_INTERNAL void pthreadpool_parallelize(
 
 void pthreadpool_destroy(struct pthreadpool* threadpool) {
 	if (threadpool != NULL) {
-		/* Release resources */
-		base_mutex_destroy(threadpool->execution_mutex);
-		atomic_size_t_destroy(threadpool->thread_index);
+		const size_t threads_count = threadpool->threads_count.value;
+		if (threads_count > 1) {
+			// Let max_concurrent_threads() return 0;
+			threadpool->threads_count = fxdiv_init_size_t(1);
+
+			pthreadpool_store_relaxed_size_t(&threadpool->active_threads, threads_count - 1 /* caller thread */);
+
+			/*
+			 * Store the command with release semantics to guarantee that if a worker thread observes
+			 * the new command value, it also observes the updated active_threads values.
+			 */
+			const uint32_t old_command = pthreadpool_load_relaxed_uint32_t(&threadpool->command);
+			pthreadpool_store_release_uint32_t(&threadpool->command, threadpool_command_shutdown);
+
+			/*
+			 * Signal the event to wake up the threads.
+			 * Event in use must be switched after every submitted command to avoid race conditions.
+			 * Choose the event based on the high bit of the command, which is flipped on every update.
+			 */
+			const uint32_t event_index = (old_command >> 31);
+			SetEvent(threadpool->command_event[event_index]);
+
+			static_cast<base::JobHandle*>(threadpool->job_handle)->Join();
+			delete static_cast<base::JobHandle*>(threadpool->job_handle);	
+
+			/* Release resources */
+			base_mutex_destroy(threadpool->execution_mutex);
+			atomic_size_t_destroy(threadpool->thread_index);
+
+			for (size_t i = 0; i < 2; i++) {
+				delete static_cast<base::WaitableEvent*>(threadpool->command_event[i]);
+				delete static_cast<base::WaitableEvent*>(threadpool->completion_event[i]);
+			}
+		}
 		pthreadpool_deallocate(threadpool);
 	}
 }
