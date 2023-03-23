@@ -648,7 +648,7 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 	 * Copy of the flags passed to a parallelization function.
 	 */
 	pthreadpool_atomic_uint32_t flags;
-#if PTHREADPOOL_USE_POSTJOB
+#if PTHREADPOOL_USE_JOB
 	// base::JobHandle
 	void* job_handle;
 	/**
