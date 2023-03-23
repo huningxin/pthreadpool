@@ -651,25 +651,16 @@ struct PTHREADPOOL_CACHELINE_ALIGNED pthreadpool {
 #if PTHREADPOOL_USE_JOB
 	// base::JobHandle
 	void* job_handle;
-	/**
-	 * Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
-	 */
+	// Serializes concurrent calls to @a pthreadpool_parallelize_* from different threads.
 	// base::Lock
 	void* execution_mutex;
-	// base::atomic_size_t
-	void* thread_index;
-	/**
-	 * Events to wait on until all threads complete an operation (until @a active_threads is zero).
-	 * To avoid race conditions due to spin-lock synchronization, we use two events and switch event in use after every
-	 * submitted command according to the high bit of the command word.
-	 */
-	void* completion_event[2];
-	/**
-	 * Events to wait on for change of the @a command variable.
-	 * To avoid race conditions due to spin-lock synchronization, we use two events and switch event in use after every
-	 * submitted command according to the high bit of the command word.
-	 */
-	void* command_event[2];
+	// std::atomic_size_t
+	void* work_index;
+	// std::atomic_size_t
+	void* num_incomplete_work_items;
+	// Events to wait on until all threads complete an operation (until num_incomplete_work_items is zero).
+	// base::WaitableEvent
+	void* completion_event;
 #endif
 #if PTHREADPOOL_USE_CONDVAR || PTHREADPOOL_USE_FUTEX
 	/**
